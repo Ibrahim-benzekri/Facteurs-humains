@@ -27,20 +27,19 @@ if platform.mac_ver()[0] != "":
 sys.path.append(f"PLUX-API-Python3/{osDic[platform.system()]}")
 
 import plux
-
+# Fonction de détection de changement
+def detect_change(prev, curr, threshold=10):  # à ajuster selon l’amplitude de ton signal
+    return abs(curr - prev) > threshold
 # Fonction pour créer l'écran de jeu avec Pygame
-def create_game_screen(mean_value, screen, font, screen_width, screen_height):
+def create_game_screen(val, screen, font, screen_width, screen_height):
     """
     Crée l'écran de jeu avec Pygame et met à jour l'affichage en fonction de la moyenne.
     """
     # Remplir l'écran avec une couleur de fond
     screen.fill((255, 255, 255))  # fond blanc
 
-    # Définir un seuil pour la valeur de la moyenne
-    seuil = 200  # Par exemple, si la moyenne dépasse 0.5, on affiche "oui"
-
     # Choisir la couleur du texte selon la moyenne
-    if mean_value > seuil:
+    if val:
         text = font.render("OUI", True, (0, 255, 0))  # Texte vert
     else:
         text = font.render("NON", True, (255, 0, 0))  # Texte rouge
@@ -58,10 +57,26 @@ class NewDevice(plux.SignalsDev):
         plux.SignalsDev.__init__(address)
         self.duration = 0
         self.frequency = 0
-
+        self.prev_value = None
+        self.changement_detecte = False
+        self.i=0
+        
     def onRawFrame(self, nSeq, data):  # onRawFrame takes three arguments
-        print(f"value : {data[0]}")
-        create_game_screen(data[0], screen, font, screen_width, screen_height)
+        current_value = data[0]
+        #print(f"value : {data[0]} , {data[1]}")
+        # Détection de changement
+        if self.prev_value is not None:
+            if detect_change(self.prev_value, current_value):
+                self.changement_detecte = True
+            else:
+                 self.changement_detecte = False   
+
+        self.prev_value = current_value
+        print(f"value : {self.i,self.changement_detecte}")
+        self.i=self.i+1
+        # Affichage
+        create_game_screen(self.changement_detecte, screen, font, screen_width, screen_height)
+
         return nSeq > self.duration * self.frequency
 
 
