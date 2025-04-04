@@ -31,7 +31,7 @@ import plux
 def detect_change(prev, curr, threshold=10):  # à ajuster selon l’amplitude de ton signal
     return abs(curr - prev) > threshold
 # Fonction pour créer l'écran de jeu avec Pygame
-def create_game_screen(val, screen, font, screen_width, screen_height):
+def create_game_screen(val,val2, screen, font, screen_width, screen_height):
     """
     Crée l'écran de jeu avec Pygame et met à jour l'affichage en fonction de la moyenne.
     """
@@ -40,9 +40,11 @@ def create_game_screen(val, screen, font, screen_width, screen_height):
 
     # Choisir la couleur du texte selon la moyenne
     if val:
-        text = font.render("OUI", True, (0, 255, 0))  # Texte vert
+        text = font.render("Droite", True, (0, 255, 0))  # Texte vert
+    elif val2:
+        text = font.render("Gauche", True, (0, 255, 0))  # Texte vert
     else:
-        text = font.render("NON", True, (255, 0, 0))  # Texte rouge
+        text = font.render("Repos", True, (255, 0, 0))  # Texte rouge
 
     # Placer le texte au centre de l'écran
     text_rect = text.get_rect(center=(screen_width / 2, screen_height / 2))
@@ -59,23 +61,32 @@ class NewDevice(plux.SignalsDev):
         self.frequency = 0
         self.prev_value = None
         self.changement_detecte = False
+        self.prev_value2 = None
+        self.changement_detecte2 = False
         self.i=0
         
     def onRawFrame(self, nSeq, data):  # onRawFrame takes three arguments
         current_value = data[0]
+        current_value2 = data[1]
         #print(f"value : {data[0]} , {data[1]}")
         # Détection de changement
-        if self.prev_value is not None:
+        if self.prev_value is not None and self.prev_value2 is not None:
             if detect_change(self.prev_value, current_value):
                 self.changement_detecte = True
-            else:
-                 self.changement_detecte = False   
+                self.changement_detecte2 = False
+            elif detect_change(self.prev_value2,current_value2):
+                 self.changement_detecte2 = True
+                 self.changement_detecte = False
+            else:     
+                 self.changement_detecte = False
+                 self.changement_detecte2 = False   
 
         self.prev_value = current_value
+        self.prev_value2 = current_value2
         print(f"value : {self.i,self.changement_detecte}")
         self.i=self.i+1
         # Affichage
-        create_game_screen(self.changement_detecte, screen, font, screen_width, screen_height)
+        create_game_screen(self.changement_detecte,self.changement_detecte2, screen, font, screen_width, screen_height)
 
         return nSeq > self.duration * self.frequency
 
