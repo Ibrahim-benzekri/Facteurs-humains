@@ -24,6 +24,9 @@ rocket_rect = rocket_img.get_rect(center=(WIDTH // 2, HEIGHT - 80))
 meteor_img = pygame.image.load("assets/meteore.png").convert_alpha()
 meteor_img = pygame.transform.scale(meteor_img, (40, 40))
 
+heart_img = pygame.image.load("assets/heart.png").convert_alpha()  # L'image du cœur
+heart_img = pygame.transform.scale(heart_img, (30, 30))
+
 # Liste des météores
 meteor_list = []
 
@@ -35,12 +38,21 @@ def spawn_meteor():
 # Stress (simulé pour l’instant)
 stress_level = 30  # entre 0 et 100
 
+# Vies du joueur
+lives = 5  # Nombre de vies initiales
+damage_taken = 0  # Nombre de météores touchés
+
 def draw_stress_bar(level):
     pygame.draw.rect(screen, (255, 0, 0), (10, 10, level * 2, 20))
     pygame.draw.rect(screen, (255, 255, 255), (10, 10, 200, 20), 2)
     font = pygame.font.SysFont(None, 20)
     text = font.render(f"Stress: {level}%", True, (255, 255, 255))
     screen.blit(text, (220, 10))
+
+def draw_lives(lives):
+    # Affiche les cœurs en haut à gauche
+    for i in range(lives):
+        screen.blit(heart_img, (10 + i * 40, 40))
 
 # Boucle de jeu
 running = True
@@ -75,7 +87,14 @@ while running:
         meteor.y += 5
         if meteor.colliderect(rocket_rect):
             print("Touché !")
+            damage_taken += 1
             meteor_list.remove(meteor)
+            lives -= 1
+
+            if lives <= 0:
+                    print("Game Over !")
+                    running = False
+                    
         elif meteor.y > HEIGHT:
             meteor_list.remove(meteor)
 
@@ -85,6 +104,7 @@ while running:
         screen.blit(meteor_img, meteor)
 
     draw_stress_bar(stress_level)
+    draw_lives(lives)
 
     pygame.display.flip()
 
