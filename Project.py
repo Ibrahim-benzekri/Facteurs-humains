@@ -1,122 +1,134 @@
-import platform
+import pygame
+import random
 import sys
-import pygame  # Import de Pygame
+import threading
+import plux  # Bibliothèque pour les capteurs PLUX
 
-osDic = {
-    "Darwin": f"MacOS/Intel{''.join(platform.python_version().split('.')[:2])}",
-    "Linux": "Linux64",
-    "Windows": f"Win{platform.architecture()[0][:2]}_{''.join(platform.python_version().split('.')[:2])}",
-}
-if platform.mac_ver()[0] != "":
-    import subprocess
-    from os import linesep
+# Initialisation Pygame
+pygame.init()
 
-    p = subprocess.Popen("sw_vers", stdout=subprocess.PIPE)
-    result = p.communicate()[0].decode("utf-8").split(str("\t"))[2].split(linesep)[0]
-    if result.startswith("12."):
-        print("macOS version is Monterrey!")
-        osDic["Darwin"] = "MacOS/Intel310"
-        if (
-            int(platform.python_version().split(".")[0]) <= 3
-            and int(platform.python_version().split(".")[1]) < 10
-        ):
-            print(f"Python version required is ≥ 3.10. Installed is {platform.python_version()}")
-            exit()
+# Fenêtre
+WIDTH, HEIGHT = 800, 600
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Space Escape")
 
+# Horloge
+clock = pygame.time.Clock()
 
-sys.path.append(f"PLUX-API-Python3/{osDic[platform.system()]}")
+# Chargement des images
+background_img = pygame.image.load("assets/background.png").convert()
+background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
 
-import plux
-# Fonction de détection de changement
-def detect_change(prev, curr, threshold=10):  # à ajuster selon l’amplitude de ton signal
-    return abs(curr - prev) > threshold
-# Fonction pour créer l'écran de jeu avec Pygame
-def create_game_screen(val, screen, font, screen_width, screen_height):
-    """
-    Crée l'écran de jeu avec Pygame et met à jour l'affichage en fonction de la moyenne.
-    """
-    # Remplir l'écran avec une couleur de fond
-    screen.fill((255, 255, 255))  # fond blanc
+rocket_img = pygame.image.load("assets/rocket.png").convert_alpha()
+rocket_img = pygame.transform.scale(rocket_img, (50, 70))
+rocket_rect = rocket_img.get_rect(center=(WIDTH // 2, HEIGHT - 80))
 
-    # Choisir la couleur du texte selon la moyenne
-    if val:
-        text = font.render("OUI", True, (0, 255, 0))  # Texte vert
-    else:
-        text = font.render("NON", True, (255, 0, 0))  # Texte rouge
+meteor_img = pygame.image.load("assets/meteore.png").convert_alpha()
+meteor_img = pygame.transform.scale(meteor_img, (40, 40))
 
-    # Placer le texte au centre de l'écran
-    text_rect = text.get_rect(center=(screen_width / 2, screen_height / 2))
-    screen.blit(text, text_rect)
+# Liste des météores
+meteor_list = []
 
-    # Mettre à jour l'affichage
-    pygame.display.flip()
+def spawn_meteor():
+    x = random.randint(0, WIDTH - 40)
+    rect = meteor_img.get_rect(topleft=(x, -40))
+    meteor_list.append(rect)
 
+# Stress (simulé)
+stress_level = 30
+
+# Variables globales pour le contrôle
+changement_detecte = False
+changement_detecte2 = False
 
 class NewDevice(plux.SignalsDev):
     def __init__(self, address):
-        plux.SignalsDev.__init__(address)
+        super().__init__(address)
         self.duration = 0
         self.frequency = 0
         self.prev_value = None
         self.changement_detecte = False
-        self.i=0
-        
-    def onRawFrame(self, nSeq, data):  # onRawFrame takes three arguments
+        self.prev_value2 = None
+        self.changement_detecte2 = False
+
+    def onRawFrame(self, nSeq, data):
+        global changement_detecte, changement_detecte2
         current_value = data[0]
-        #print(f"value : {data[0]} , {data[1]}")
+        current_value2 = data[1]
+
         # Détection de changement
-        if self.prev_value is not None:
+        if self.prev_value is not None and self.prev_value2 is not None:
             if detect_change(self.prev_value, current_value):
-                self.changement_detecte = True
+                changement_detecte = True
+                changement_detecte2 = False
+            elif detect_change(self.prev_value2, current_value2):
+                changement_detecte2 = True
+                changement_detecte = False
             else:
-                 self.changement_detecte = False   
+                changement_detecte = False
+                changement_detecte2 = False
 
         self.prev_value = current_value
-        print(f"value : {self.i,self.changement_detecte}")
-        self.i=self.i+1
-        # Affichage
-        create_game_screen(self.changement_detecte, screen, font, screen_width, screen_height)
+        self.prev_value2 = current_value2
 
         return nSeq > self.duration * self.frequency
 
-
-# example routines
-
-def exampleAcquisition(
-    address="98:D3:51:FE:84:FC",
-    duration=20,
-    frequency=10,
-    active_ports=[1, 2, 3, 4, 5, 6],
-):  # time acquisition for each frequency
-    """
-    Example acquisition.
-    """
-    device = NewDevice(address)
-    device.duration = int(duration)  # Duration of acquisition in seconds.
-    device.frequency = int(frequency)  # Samples per second.
-    
-    # Trigger the start of the data recording: https://www.downloads.plux.info/apis/PLUX-API-Python-Docs/classplux_1_1_signals_dev.html#a028eaf160a20a53b3302d1abd95ae9f1
-    device.start(device.frequency, active_ports, 16)
-    device.loop()  # calls device.onRawFrame until it returns True
+def start_sensor_thread():
+    """Lance l'acquisition des capteurs dans un thread séparé"""
+    device = NewDevice("98:D3:51:FE:84:FC")
+    device.duration = 20  # Acquisition de 20 secondes
+    device.frequency = 10  # 10 échantillons par seconde
+    device.start(device.frequency, [1, 2], 16)
+    device.loop()  
     device.stop()
     device.close()
 
+# Démarrer le thread du capteur
+threading.Thread(target=start_sensor_thread, daemon=True).start()
 
-if __name__ == "__main__":
-    # Initialisation de Pygame
-    pygame.init()
+# Boucle de jeu
+running = True
+spawn_timer = 0
 
-    # Taille de la fenêtre
-    screen_width = 400
-    screen_height = 200
-    screen = pygame.display.set_mode((screen_width, screen_height))
-    pygame.display.set_caption("Vérification Moyenne")
+while running:
+    dt = clock.tick(60)
+    screen.blit(background_img, (0, 0))
 
-    # Police pour le texte
-    font = pygame.font.SysFont("Arial", 48)
+    # Événements Pygame
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            running = False
 
-    # Utilisation des arguments du terminal (si présents) comme arguments d'entrée
-    exampleAcquisition(*sys.argv[1:])
+    # Déplacement de la fusée avec les capteurs
+    if changement_detecte:
+        rocket_rect.x -= 5
+    elif changement_detecte2:
+        rocket_rect.x += 5
 
-    # Fermeture de Pygame à la fin
-    pygame.quit()
+    # Bordures
+    rocket_rect.x = max(0, min(WIDTH - rocket_rect.width, rocket_rect.x))
+
+    # Météores
+    spawn_timer += dt
+    if spawn_timer > 1000 - stress_level * 5:
+        spawn_meteor()
+        spawn_timer = 0
+
+    for meteor in meteor_list[:]:
+        meteor.y += 5
+        if meteor.colliderect(rocket_rect):
+            print("Touché !")
+            meteor_list.remove(meteor)
+        elif meteor.y > HEIGHT:
+            meteor_list.remove(meteor)
+
+    # Affichage
+    screen.blit(rocket_img, rocket_rect)
+    for meteor in meteor_list:
+        screen.blit(meteor_img, meteor)
+
+    pygame.display.flip()
+
+# Quitter
+pygame.quit()
+sys.exit()

@@ -1,6 +1,8 @@
 import pygame
 import random
 import sys
+import threading
+
 
 # Initialisation
 pygame.init()
@@ -32,15 +34,22 @@ def spawn_meteor():
     rect = meteor_img.get_rect(topleft=(x, -40))
     meteor_list.append(rect)
 
-# Stress (simulé pour l’instant)
-stress_level = 30  # entre 0 et 100
+# Stress (simulé)
+stress_level = 30
 
-def draw_stress_bar(level):
-    pygame.draw.rect(screen, (255, 0, 0), (10, 10, level * 2, 20))
-    pygame.draw.rect(screen, (255, 255, 255), (10, 10, 200, 20), 2)
-    font = pygame.font.SysFont(None, 20)
-    text = font.render(f"Stress: {level}%", True, (255, 255, 255))
-    screen.blit(text, (220, 10))
+# Variable de contrôle
+control_input = "stop"
+
+def control_listener():
+    """Écoute les entrées dans la console pour contrôler la fusée"""
+    global control_input
+    while True:
+        cmd = input("Commande (left, right, stop) : ").strip().lower()
+        if cmd in ["left", "right", "stop"]:
+            control_input = cmd
+
+# Lancer l'écoute des commandes dans un thread séparé
+threading.Thread(target=control_listener, daemon=True).start()
 
 # Boucle de jeu
 running = True
@@ -50,16 +59,15 @@ while running:
     dt = clock.tick(60)
     screen.blit(background_img, (0, 0))
 
-    # Événements
+    # Événements pygame
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    # Contrôles (simule pression main gauche/droite avec flèches)
-    keys = pygame.key.get_pressed()
-    if keys[pygame.K_LEFT]:
+    # Contrôler la fusée via la variable `control_input`
+    if control_input == "left":
         rocket_rect.x -= 5
-    if keys[pygame.K_RIGHT]:
+    elif control_input == "right":
         rocket_rect.x += 5
 
     # Bordures
@@ -84,10 +92,9 @@ while running:
     for meteor in meteor_list:
         screen.blit(meteor_img, meteor)
 
-    draw_stress_bar(stress_level)
-
     pygame.display.flip()
 
 # Quitter
 pygame.quit()
 sys.exit()
+
