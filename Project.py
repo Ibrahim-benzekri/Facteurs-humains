@@ -53,14 +53,6 @@ def create_game_screen(mean_value, screen, font, screen_width, screen_height):
     pygame.display.flip()
 
 
-def process_mean(mean_value, screen, font, screen_width, screen_height):
-    """
-    Remplace la fonction procced_mean par un écran de jeu avec Pygame qui affiche
-    "oui" ou "non" en fonction de la moyenne.
-    """
-    print(f"value : {mean_value}")
-    create_game_screen(mean_value, screen, font, screen_width, screen_height)  # Afficher l'écran avec la moyenne
-
 class NewDevice(plux.SignalsDev):
     def __init__(self, address):
         plux.SignalsDev.__init__(address)
@@ -68,7 +60,8 @@ class NewDevice(plux.SignalsDev):
         self.frequency = 0
 
     def onRawFrame(self, nSeq, data):  # onRawFrame takes three arguments
-        process_mean(data[0], screen, font, screen_width, screen_height)  # Mettre à jour le texte à chaque nouvelle moyenne  
+        print(f"value : {data[0]}")
+        create_game_screen(data[0], screen, font, screen_width, screen_height)
         return nSeq > self.duration * self.frequency
 
 
