@@ -29,6 +29,10 @@ if platform.mac_ver()[0] != "":
 sys.path.append(f"PLUX-API-Python3/{osDic[platform.system()]}")
 import plux
 
+def normalize(val, min_val=400, max_val=900):
+    return max(0, min(100, int((val - min_val) / (max_val - min_val) * 100)))
+
+
 # --- EMG Part ---
 def detect_change(prev, curr, threshold=10):
     return abs(curr - prev) > threshold
@@ -38,7 +42,9 @@ shared_state = {
     "gauche": False,
     "droite": False,
     "tir": False,
-    "stress" : False
+    "stress" : False,
+     "respiration": 0  
+    
 }
 
 class NewDevice(plux.SignalsDev):
@@ -54,6 +60,10 @@ class NewDevice(plux.SignalsDev):
         current_value = data[0]
         current_value2 = data[1]
         stress_raw = data[2]
+        print(shared_state["respiration"])
+        print(stress_raw)
+        stress_level = normalize(stress_raw)
+        shared_state["respiration"] = stress_level
 
         changement_detecte = False
         changement_detecte2 = False
@@ -66,10 +76,9 @@ class NewDevice(plux.SignalsDev):
 
         self.prev_value = current_value
         self.prev_value2 = current_value2
+        shared_state["stress"] = stress_level > 70 
 
-        # Calcul stress
-        stress_detected = stress_raw > 700  # Seuil à adapter 
-        shared_state["stress"] = stress_detected
+       
 
         to_game(changement_detecte, changement_detecte2)
 
@@ -215,7 +224,7 @@ def lancer_jeu():
         for projectile in projectiles:
             pygame.draw.rect(screen, (255, 255, 0), projectile)
 
-        draw_stress_bar(stress_level)
+        draw_stress_bar(shared_state["respiration"])
         draw_lives(lives)
         pygame.display.flip()
 
