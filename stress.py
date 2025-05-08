@@ -31,9 +31,23 @@ import plux
 
 def normalize(val, min_val=400, max_val=900):
     return max(0, min(100, int((val - min_val) / (max_val - min_val) * 100)))
+def calculate_stress_from_respiratory_rate(respiration_rate):
+    """Calcul du stress basé sur la respiration : plus la respiration est rapide, plus le stress est élevé."""
+    # Normalisation du taux de respiration
+    normalized_respiration = normalize(respiration_rate, min_val=300, max_val=900)
+    
+    # On considère que plus la respiration est rapide, plus le stress est élevé.
+    # Une respiration plus rapide correspond à un stress plus élevé (valeur faible -> stress élevé)
+    stress_metric = 100 - normalized_respiration  # Inverser la normalisation pour avoir un stress élevé avec une respiration rapide
 
+    # Seuil pour déterminer si la personne est stressée
+    threshold = 50  # Seuil 
+    shared_state["stress"] = stress_metric > threshold  # Si le stress dépasse le seuil, on considère que la personne est stressée
 
-# --- EMG Part ---
+    # Mise à jour de la variable de respiration normalisée
+    shared_state["respiration"] = normalized_respiration
+
+    return stress_metric
 def detect_change(prev, curr, threshold=10):
     return abs(curr - prev) > threshold
 
@@ -59,32 +73,32 @@ class NewDevice(plux.SignalsDev):
     def onRawFrame(self, nSeq, data):
         current_value = data[0]
         current_value2 = data[1]
-        stress_raw = data[2]
-        print(shared_state["respiration"])
-        print(stress_raw)
-        stress_level = normalize(stress_raw)
-        shared_state["respiration"] = stress_level
+        respiration_rate = data[2]  # Respiration sur data[2]
+
+        # Calcul du niveau de stress basé uniquement sur la respiration
+        stress_metric = calculate_stress_from_respiratory_rate(respiration_rate)
+        shared_state['respiration']=stress_metric
+        # Affichage des valeurs pour débogage
+        print(f"Respiration Level: {shared_state['respiration']}, Stress Metric: {stress_metric}")
 
         changement_detecte = False
         changement_detecte2 = False
 
+        # Détection de changements sur les valeurs des capteurs
         if self.prev_value is not None and self.prev_value2 is not None:
             if detect_change(self.prev_value, current_value):
                 changement_detecte = True
             if detect_change(self.prev_value2, current_value2):
                 changement_detecte2 = True
 
+        # Mise à jour des valeurs précédentes
         self.prev_value = current_value
         self.prev_value2 = current_value2
-        shared_state["stress"] = stress_level > 70 
 
-       
-
+        # Appel de la fonction de jeu avec les informations des capteurs
         to_game(changement_detecte, changement_detecte2)
 
         return nSeq > self.duration * self.frequency
-
-
 def to_game(gauche, droite):
     shared_state["gauche"] = gauche
     shared_state["droite"] = droite
