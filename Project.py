@@ -1,6 +1,7 @@
 import platform
 import sys
-import pygame  # Import de Pygame
+import time
+import pygame  
 
 osDic = {
     "Darwin": f"MacOS/Intel{''.join(platform.python_version().split('.')[:2])}",
@@ -64,6 +65,7 @@ class NewDevice(plux.SignalsDev):
         self.prev_value2 = None
         self.changement_detecte2 = False
         self.i=0
+        self.hr = 60
         
     def onRawFrame(self, nSeq, data):  # onRawFrame takes three arguments
         current_value = data[0]
@@ -79,15 +81,18 @@ class NewDevice(plux.SignalsDev):
                  self.changement_detecte = False
             else:     
                  self.changement_detecte = False
-                 self.changement_detecte2 = False   
-
+                 self.changement_detecte2 = False  
+                  
+        if time.time() - self.last_hr_update > 2:# Simuler un HR entre 70 et 120 toutes les 2 secondes
+                self.hr = random.randint(70, 120)
+                self.last_hr_update = time.time()
         self.prev_value = current_value
         self.prev_value2 = current_value2
         print(f"value : {self.i,self.changement_detecte}")
         self.i=self.i+1
         # Affichage
         create_game_screen(self.changement_detecte,self.changement_detecte2, screen, font, screen_width, screen_height)
-
+    
         return nSeq > self.duration * self.frequency
 
 

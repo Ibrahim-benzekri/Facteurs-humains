@@ -37,7 +37,8 @@ def detect_change(prev, curr, threshold=10):
 shared_state = {
     "gauche": False,
     "droite": False,
-    "tir": False
+    "tir": False,
+    "hr": 75  # ← HR simulé au début
 }
 
 class NewDevice(plux.SignalsDev):
@@ -65,14 +66,16 @@ class NewDevice(plux.SignalsDev):
         self.prev_value = current_value
         self.prev_value2 = current_value2
 
-        to_game(changement_detecte, changement_detecte2)
+        to_game(changement_detecte, changement_detecte2, self.hr)
+
 
         return nSeq > self.duration * self.frequency
 
-def to_game(gauche, droite):
+def to_game(gauche, droite, hr=75):
     shared_state["gauche"] = gauche
     shared_state["droite"] = droite
-    shared_state["tir"] = gauche and droite  # tir if both activated
+    shared_state["tir"] = gauche and droite
+    shared_state["hr"] = hr  # Met à jour le HR
 
 def lancer_emg():
     address = "98:D3:51:FE:84:FC"
@@ -111,8 +114,10 @@ def lancer_jeu():
         x = random.randint(0, WIDTH - 40)
         rect = meteor_img.get_rect(topleft=(x, -40))
         meteor_list.append(rect)
+        
+    # Calcul dynamique du stress
+    stress_level = min(100, max(0, shared_state["hr"] - 60))  # HR 60 = 0% stress, HR 160 = 100%
 
-    stress_level = 30
     lives = 5
     damage_taken = 0
 
@@ -122,6 +127,8 @@ def lancer_jeu():
         font = pygame.font.SysFont(None, 20)
         text = font.render(f"Stress: {level}%", True, (255, 255, 255))
         screen.blit(text, (220, 10))
+        hr_text = font.render(f"HR: {shared_state['hr']} bpm", True, (255, 255, 255))
+        screen.blit(hr_text, (220, 30))
 
     def draw_lives(lives):
         for i in range(lives):
@@ -164,12 +171,15 @@ def lancer_jeu():
 
         # Météores
         spawn_timer += dt
-        if spawn_timer > 1000 - stress_level * 5:
+        spawn_delay = max(200, 1000 - stress_level * 7)  # limite basse à 200 ms
+        if spawn_timer > spawn_delay:
             spawn_meteor()
             spawn_timer = 0
 
         for meteor in meteor_list[:]:
-            meteor.y += 5
+            
+            meteor_speed = 5 + (stress_level / 20)  # entre 5 et 10
+            meteor.y += meteor_speed
             if meteor.colliderect(rocket_rect):
                 damage_taken += 1
                 meteor_list.remove(meteor)
