@@ -55,7 +55,7 @@ Plus vous êtes stressé (respiration rapide ou irrégulière), plus le jeu devi
 📷 Aperçu
 
 ![img.png](img.png)
-🧠 Auteur
+
 
 Projet développé par :
 
