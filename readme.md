@@ -1,11 +1,11 @@
 
-# 🚀 Space Escape
+#  Space Escape
 
 **Space Escape** est un jeu immersif où vous contrôlez une fusée à l’aide de capteurs physiologiques pour esquiver des météores et survivre dans l’espace. Utilisez vos muscles et votre respiration pour déplacer la fusée, tirer sur les obstacles et gérer le stress !
  
 ---
 
-## 🎮 Contrôles
+## Contrôles
 
 Le jeu utilise des **capteurs EMG** (électromyographie) pour détecter les mouvements des poignets, et un **capteur de respiration** pour mesurer le stress du joueur.
 
@@ -18,7 +18,7 @@ Le jeu utilise des **capteurs EMG** (électromyographie) pour détecter les mouv
  
 ---
 
-## ⚙️ Configuration requise
+## ⚙Configuration requise
 
 - **Python 3.10** obligatoire
 - Connexion Bluetooth active entre la carte de capteurs et l’ordinateur
@@ -29,7 +29,7 @@ Le jeu utilise des **capteurs EMG** (électromyographie) pour détecter les mouv
 
 ---
 
-## 🛠️ Installation
+##  Installation
 
 1. **Cloner le dépôt** :
    ```bash
